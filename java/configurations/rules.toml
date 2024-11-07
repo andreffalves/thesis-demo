@@ -1,0 +1,59 @@
+[[rules]]
+name = "reduce_size"
+query = """(
+local_variable_declaration
+	type: (_) @type
+    (_
+    	name: (identifier) @var
+        (_
+        	object: (identifier) @object
+            name: (identifier) @name
+        )
+    )
+(#eq? @name "getInputStream")
+)@local_variable_declaration
+"""
+replace_node="local_variable_declaration"
+replace = """@type @var;
+if ("gzip".equals(@object.getContentEncoding())) {
+    @var = new GZIPInputStream(@object.getInputStream());
+} else {
+    @var = @object.getInputStream();
+}"""
+is_seed_rule= true
+
+[[rules]]
+name = "request_property"
+query = """(
+local_variable_declaration
+	type: (type_identifier) @type
+	declarator: (variable_declarator
+    	name: (identifier) @var
+    )
+	(#eq? @type "HttpURLConnection")
+)@local_variable_declaration
+"""
+replace_node = "local_variable_declaration"
+replace = """
+HttpURLConnection conn = (HttpURLConnection)new URL(uri.toString()).openConnection();
+@var.setRequestProperty("Accept-Encoding", "gzip");
+"""
+is_seed_rule = false
+
+
+[[rules]]
+name = "add_gzip_import"
+query = "(package_declaration (_)@package_name) @package_declaration"
+replace_node = "package_declaration"
+replace = "@package_declaration\nimport java.util.zip.GZIPInputStream;\n"
+groups = ["Cleanup Rule"]
+[[rules.filters]]
+enclosing_node = "((program) @cu)"
+not_contains = [
+  """(
+((import_declaration (scoped_identifier (scoped_identifier) @type_qualifier (identifier)@type_name) @imported_type) @import)
+(#eq? @type_name "GZIPInputStream")
+)""",
+]
+
+

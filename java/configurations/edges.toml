@@ -1,0 +1,4 @@
+[[edges]]
+scope = "File"
+from = "reduce_size"
+to = ["add_gzip_import"]
